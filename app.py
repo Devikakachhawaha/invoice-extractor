@@ -13,7 +13,7 @@ from openpyxl.utils import get_column_letter
 # ==========================================
 
 st.set_page_config(page_title="PDF Extractor", layout="wide")
-st.title("📄 GST Shipping Bill PDF Extractor")
+st.title("📄 PDF Extractor")
 st.write("Upload PDF files and extract invoice data into Excel.")
 
 # ==========================================
