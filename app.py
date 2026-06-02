@@ -198,6 +198,8 @@ def extract_data(text, page_texts):
     data["EXCHANGE_RATE"] = ex_rate
     return data
 
+
+
 # ==========================================
 # BUILD EXCEL
 # ==========================================
@@ -408,11 +410,28 @@ if st.button("Extract Data"):
 
         df = pd.DataFrame(results)
 
+        # Primary sort = Invoice Date
         df["SORT_DATE"] = pd.to_datetime(
             df["Invoice Date (from Shipping Bill)"],
-            format="%d-%b-%y", errors="coerce"
+            format="%d-%b-%y",
+            errors="coerce"
         )
-        df = df.sort_values(by="SORT_DATE", ascending=True).drop(columns=["SORT_DATE"])
+
+        # Secondary sort = numeric part of invoice number
+        df["SORT_INV"] = (
+            df["Invoice No. (from Shipping Bill)"]
+            .str.extract(r'/(\d+)$')[0]
+            .astype(float)
+        )
+
+        df = (
+            df.sort_values(
+                by=["SORT_DATE", "SORT_INV"],
+                ascending=[True, True]
+            )
+            .drop(columns=["SORT_DATE", "SORT_INV"])
+        )
+
         df.insert(0, "S NO.", range(1, len(df) + 1))
         df = df[columns]
 
@@ -439,14 +458,16 @@ if st.button("Extract Data"):
 
         df = pd.concat([df, empty_rows, total_row], ignore_index=True)
 
-        
-       # ---- SORT SECOND TABLE BY INVOICE NUMBER ----
-        def invoice_sort_key(item):
-         inv = item.get("F_INV_NO") or ""
-         match = re.search(r'/(\d+)$', inv)
-         return int(match.group(1)) if match else 999999
+        # ---- SORT SECOND TABLE SAME AS FIRST TABLE ----
+        invoice_order = {
+                inv: idx
+                for idx, inv in enumerate(df["Invoice No. (from Shipping Bill)"])
+        }
 
-        summary_rows = sorted(summary_rows, key=invoice_sort_key)
+        summary_rows = sorted(
+                summary_rows,
+                key=lambda x: invoice_order.get(x.get("F_INV_NO"), 999999)
+        )
 
         # ---- BUILD & DOWNLOAD ----
         output = build_excel(df, summary_rows)
